@@ -1,0 +1,11 @@
+# Cloned sources, build output and devnet state are local-only.
+/src/
+/bin/
+/go.work
+/go.work.sum
+/.devnet/
+# Findings never leave the lab: keep real PoCs out of git.
+/poc-evm/*
+!/poc-evm/Template.sol
+/poc-go/*
+!/poc-go/invariants_test.go

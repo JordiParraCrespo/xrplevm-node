@@ -1,0 +1,82 @@
+# Isolated devnet. The "lab" network is internal: containers can talk to each
+# other but have no route to the internet, so no PoC can reach mainnet or
+# testnet even if it is pointed at a public RPC by mistake. No ports are
+# published to the host either.
+#
+# --chain-id must match LAB_CHAIN_ID in lab.env; without it exrpd falls back to
+# a genesis parser that rejects SDK genesis files.
+x-validator: &validator
+  image: debian:bookworm-slim
+  networks: [lab]
+  volumes:
+    - ./bin/exrpd:/usr/local/bin/exrpd:ro
+  restart: "no"
+
+services:
+  val0:
+    <<: *validator
+    hostname: val0
+    volumes: [./bin/exrpd:/usr/local/bin/exrpd:ro, ./.devnet/val0:/home/val]
+    command: ["exrpd", "start", "--home", "/home/val", "--chain-id", "xrplevm_1449999-1", "--json-rpc.api", "eth,net,web3,txpool,debug"]
+  val1:
+    <<: *validator
+    hostname: val1
+    volumes: [./bin/exrpd:/usr/local/bin/exrpd:ro, ./.devnet/val1:/home/val]
+    command: ["exrpd", "start", "--home", "/home/val", "--chain-id", "xrplevm_1449999-1"]
+  val2:
+    <<: *validator
+    hostname: val2
+    volumes: [./bin/exrpd:/usr/local/bin/exrpd:ro, ./.devnet/val2:/home/val]
+    command: ["exrpd", "start", "--home", "/home/val", "--chain-id", "xrplevm_1449999-1"]
+  val3:
+    <<: *validator
+    hostname: val3
+    volumes: [./bin/exrpd:/usr/local/bin/exrpd:ro, ./.devnet/val3:/home/val]
+    command: ["exrpd", "start", "--home", "/home/val", "--chain-id", "xrplevm_1449999-1"]
+
+  # Executes EVM PoCs. Only reachable network is "lab"; everything goes
+  # through scripts/run-poc.sh, which checks the chain id first.
+  poc-runner:
+    image: ghcr.io/foundry-rs/foundry:stable
+    networks: [lab]
+    depends_on: [val0]
+    working_dir: /lab
+    entrypoint: ["sleep", "infinity"]
+    environment:
+      RPC_URL: http://val0:8545
+      COMET_RPC: http://val0:26657
+      # No internet here: use the compiler fetched by fetch-solc, never download.
+      FOUNDRY_OFFLINE: "true"
+      FOUNDRY_SOLC_VERSION: "0.8.30"
+      FOUNDRY_OUT: /tmp/out
+      FOUNDRY_CACHE_PATH: /tmp/cache
+    volumes:
+      - ./lab.env:/lab/lab.env:ro
+      - ./scripts:/lab/scripts:ro
+      - ./poc-evm:/lab/poc-evm
+      - ./.devnet/attacker.key:/lab/attacker.key:ro
+      - solc:/home/foundry/.svm:ro
+
+  # One-shot helper with internet but NOT on the lab network: downloads the
+  # Solidity compiler into the shared volume. Run: docker compose run --rm fetch-solc
+  fetch-solc:
+    image: ghcr.io/foundry-rs/foundry:stable
+    profiles: [tools]
+    user: root
+    environment:
+      HOME: /home/foundry
+    entrypoint:
+      - sh
+      - -c
+      - >-
+        mkdir -p /tmp/p/src && echo 'pragma solidity 0.8.30; contract A {}' > /tmp/p/src/A.sol &&
+        cd /tmp/p && forge build --use 0.8.30 && chown -R 1000:1000 /home/foundry/.svm
+    volumes:
+      - solc:/home/foundry/.svm
+
+volumes:
+  solc:
+
+networks:
+  lab:
+    internal: true

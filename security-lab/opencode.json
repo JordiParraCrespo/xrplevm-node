@@ -1,0 +1,40 @@
+{
+  "$schema": "https://opencode.ai/config.json",
+  "model": "deepinfra-glm/zai-org/GLM-5.3",
+  "provider": {
+    "deepinfra-glm": {
+      "npm": "@ai-sdk/openai-compatible",
+      "name": "DeepInfra",
+      "options": {
+        "baseURL": "https://api.deepinfra.com/v1/openai",
+        "apiKey": "{env:DEEPINFRA_API_KEY}"
+      },
+      "models": {
+        "zai-org/GLM-5.3": {
+          "name": "GLM-5.3",
+          "limit": { "context": 1000000, "output": 128000 }
+        }
+      }
+    }
+  },
+  "permission": {
+    "bash": {
+      "*": "ask",
+      "go test *": "allow",
+      "go build *": "allow",
+      "go vet *": "allow",
+      "git diff*": "allow",
+      "git status*": "allow",
+      "git log*": "allow",
+      "scripts/test.sh*": "allow",
+      "scripts/build.sh*": "allow",
+      "docker compose exec poc-runner scripts/run-poc.sh *": "ask",
+      "git push*": "deny",
+      "cast send*": "deny",
+      "forge script*": "deny",
+      "*rpc.xrplevm.org*": "deny",
+      "*xrplevm.org*": "deny"
+    },
+    "webfetch": "ask"
+  }
+}
