@@ -33,13 +33,14 @@ This repo is configured for monthly AI-assisted security audits. Before performi
 
 1. **`.claude/security/SECURITY_SCOPE.md`** — Defines what to audit, trust boundaries, priority tiers, and focus areas.
 2. **`.claude/security/THREAT_MODEL.md`** — Assets, adversary profiles, attack surfaces, and Cosmos SDK-specific vulnerability patterns.
+3. **`.claude/security/KNOWN_VULNERABILITY_PATTERNS.md`** — Catalog of past Cosmos / EVM-on-Cosmos / bridge incidents mapped to concrete checks for this repo.
 
 ### Running an audit
 
 Spawn one `security-reviewer` agent per focus area defined in SECURITY_SCOPE.md. Findings are reported as issues in the **private** `peersyst/security` repo with `repo:xrplevm/node` label. Before reporting, query existing issues to avoid duplicates.
 
 ```
-Read .claude/security/SECURITY_SCOPE.md and .claude/security/THREAT_MODEL.md. Then perform a security audit focused on: [AREA]. Check the components listed in the scope. Report findings to peersyst/security following the reporting workflow in SECURITY_SCOPE.md.
+Read .claude/security/SECURITY_SCOPE.md, .claude/security/THREAT_MODEL.md and .claude/security/KNOWN_VULNERABILITY_PATTERNS.md. Then perform a security audit focused on: [AREA]. Check the components listed in the scope. Report findings to peersyst/security following the reporting workflow in SECURITY_SCOPE.md.
 ```
 
 ### Key security invariants

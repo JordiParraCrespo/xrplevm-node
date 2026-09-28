@@ -151,7 +151,7 @@ Each audit should spawn a separate agent per focus area below. All areas are rev
 Spawn one `security-reviewer` agent per area. Example:
 
 ```
-claude "Read .claude/security/SECURITY_SCOPE.md and .claude/security/THREAT_MODEL.md. Then perform a security audit focused on: [AREA]. Check the components listed in the scope. Report findings to peersyst/security following the reporting workflow below."
+claude "Read .claude/security/SECURITY_SCOPE.md, .claude/security/THREAT_MODEL.md and .claude/security/KNOWN_VULNERABILITY_PATTERNS.md. Then perform a security audit focused on: [AREA]. Check the components listed in the scope. Report findings to peersyst/security following the reporting workflow below."
 ```
 
 Or run all areas in parallel by spawning multiple agents in a single prompt.

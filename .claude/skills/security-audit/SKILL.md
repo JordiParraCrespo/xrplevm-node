@@ -7,7 +7,7 @@ allowed-tools: Bash(gh *) Read Grep Glob Agent
 
 # Security Audit
 
-Read `.claude/security/SECURITY_SCOPE.md` and `.claude/security/THREAT_MODEL.md`. Then spawn one `security-reviewer` agent per focus area defined in the "Audit Focus Areas" table, running them all in parallel.
+Read `.claude/security/SECURITY_SCOPE.md`, `.claude/security/THREAT_MODEL.md` and `.claude/security/KNOWN_VULNERABILITY_PATTERNS.md`. Then spawn one `security-reviewer` agent per focus area defined in the "Audit Focus Areas" table, running them all in parallel.
 
 Each agent should:
 

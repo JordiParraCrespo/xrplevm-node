@@ -198,3 +198,5 @@ These are common vulnerability patterns in Cosmos SDK chains that should be chec
 - **Parameter changes**: Check if on-chain parameter changes can lead to unsafe states (e.g., `MaxValidators` to 0 in staking params, unbonding time to 0, bond denom change breaking POA).
 - **Non-determinism**: Any use of maps iterated for state, goroutines, or `time.Now()` in state machine code causes consensus failures. Check all code paths in `x/poa/`, `app/ante/`, and `app/upgrades/`.
 - **ICA host allow list**: Verify which message types the ICA host module is allowed to execute. An open allow list lets remote chains execute arbitrary messages on this chain.
+
+For historical incidents behind these patterns (and more), see `KNOWN_VULNERABILITY_PATTERNS.md`.
