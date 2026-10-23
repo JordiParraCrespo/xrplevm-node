@@ -22,6 +22,11 @@ module poa {
   type Status = Bonded | Unbonding
   type Validator = { status: Status, tokens: int, shares: int }
   type Tx = { kind: str, signer: Addr, target: Addr, ok: bool }
+  type State = {
+    balance: Addr -> int, validators: Addr -> Validator,
+    delegations: (Addr, Addr) -> int, unbondings: (Addr, Addr) -> int,
+    bondedPool: int, notBondedPool: int, supply: int,
+  }
 
   // ------------------------------------------------------------ constants
   pure val AUTHORITY = "gov"                 // keeper.authority (gov module account)
@@ -48,21 +53,28 @@ module poa {
 
   // ghost state, used only by the step properties
   var lastTx: Tx
-  var prevBonded: Set[Addr]
+  var prev: State                            // all state before lastTx
 
   // -------------------------------------------------------------- helpers
   pure def sum(s: Set[a], f: a => int): int = s.fold(0, (acc, x) => acc + f(x))
   pure def without(m: a -> b, k: a): a -> b = m.keys().exclude(Set(k)).mapBy(x => m.get(x))
   pure def getOr(m: a -> int, k: a): int = if (m.keys().contains(k)) m.get(k) else 0
 
-  def bondedSet: Set[Addr] = validators.keys().filter(v => validators.get(v).status == Bonded)
+  pure def bondedOf(vs: Addr -> Validator): Set[Addr] = vs.keys().filter(v => vs.get(v).status == Bonded)
+  def bondedSet: Set[Addr] = bondedOf(validators)
+  def prevBonded: Set[Addr] = bondedOf(prev.validators)
+  def snapshot: State = {
+    balance: balance, validators: validators, delegations: delegations,
+    unbondings: unbondings, bondedPool: bondedPool, notBondedPool: notBondedPool,
+    supply: supply,
+  }
   def isValidator(v: Addr): bool = validators.keys().contains(v)
   def tokensOf(v: Addr): int = if (isValidator(v)) validators.get(v).tokens else 0
 
-  // Effects shared by every transaction: record it, remember the bonded set.
+  // Effects shared by every transaction: record it, remember the state before it.
   action record(kind: str, signer: Addr, target: Addr, ok: bool): bool = all {
     lastTx' = { kind: kind, signer: signer, target: target, ok: ok },
-    prevBonded' = bondedSet,
+    prev' = snapshot,
   }
 
   // A transaction that fails is reverted: no state change except the record.
@@ -75,16 +87,26 @@ module poa {
 
   // ----------------------------------------------------------------- init
   // Genesis: alice and bob are bonded validators, self-delegated with POWER.
+  pure val GENESIS: State = {
+    balance: USERS.mapBy(_ => 0),
+    validators: Set("alice", "bob").mapBy(_ => { status: Bonded, tokens: POWER, shares: POWER }),
+    delegations: Map(("alice", "alice") -> POWER, ("bob", "bob") -> POWER),
+    unbondings: Map(),
+    bondedPool: 2 * POWER,
+    notBondedPool: 0,
+    supply: 2 * POWER,
+  }
+
   action init = all {
-    balance' = USERS.mapBy(_ => 0),
-    validators' = Set("alice", "bob").mapBy(_ => { status: Bonded, tokens: POWER, shares: POWER }),
-    delegations' = Map(("alice", "alice") -> POWER, ("bob", "bob") -> POWER),
-    unbondings' = Map(),
-    bondedPool' = 2 * POWER,
-    notBondedPool' = 0,
-    supply' = 2 * POWER,
+    balance' = GENESIS.balance,
+    validators' = GENESIS.validators,
+    delegations' = GENESIS.delegations,
+    unbondings' = GENESIS.unbondings,
+    bondedPool' = GENESIS.bondedPool,
+    notBondedPool' = GENESIS.notBondedPool,
+    supply' = GENESIS.supply,
     lastTx' = { kind: "genesis", signer: AUTHORITY, target: AUTHORITY, ok: true },
-    prevBonded' = Set("alice", "bob"),
+    prev' = GENESIS,
   }
 
   // --------------------------------------------------- x/poa: AddValidator
@@ -233,8 +255,8 @@ module poa {
                                   and bondedSet.subseteq(prevBonded),
     }
 
-  /// Failed (reverted) transactions never change state that matters.
-  val rejectedTxHasNoEffect = not(lastTx.ok) implies bondedSet == prevBonded
+  /// A failed (reverted) transaction changes no state at all.
+  val rejectedTxHasNoEffect = not(lastTx.ok) implies snapshot == prev
 
   /// No inflation, no lost funds: every bond-denom token is somewhere.
   val supplyConserved = supply == sum(USERS, u => balance.get(u)) + bondedPool + notBondedPool
