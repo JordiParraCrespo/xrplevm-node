@@ -23,7 +23,8 @@ x/poa/              # Proof-of-Authority module (validator add/remove)
 proto/              # Protobuf definitions (gRPC API surface)
 types/              # Core types (address prefixes, denominations)
 testutil/           # Test helpers
-tests/              # Integration tests
+tests/              # Integration tests (incl. x/poa model-based test)
+formal/             # Formal models (Quint) of consensus-critical logic, see formal/README.md
 security/           # Security audit scope and threat model
 ```
 

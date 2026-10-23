@@ -164,7 +164,53 @@ test-integration:
 
 test-poa:
 	@echo "--> Running POA tests"
-	@go test $(EXCLUDED_POA_PACKAGES) 
+	@go test $(EXCLUDED_POA_PACKAGES)
+
+# Model-based test of x/poa against the real app (mirrors formal/poa/poa.qnt).
+# Override with POA_MODEL_SEED=<n> POA_MODEL_STEPS=<n>.
+test-poa-model:
+	@echo "--> Running POA model-based test"
+	@go test -mod=readonly -tags=test -count=1 -v -run 'TestIntegrationTestSuite/TestPoaModelBased' ./tests/integration
+
+###############################################################################
+###                          Formal verification                            ###
+###############################################################################
+# See formal/README.md. Needs Node.js (npx); Quint is fetched on first use.
+QUINT_VERSION ?= 0.33.0
+QUINT_SPEC = formal/poa/poa.qnt
+QUINT_SEED ?= 1
+QUINT_SAMPLES ?= 2000
+QUINT_STEPS ?= 25
+QUINT = npx --yes @informalsystems/quint@$(QUINT_VERSION)
+QUINT_RUN = $(QUINT) run --backend=typescript --seed=$(QUINT_SEED) \
+	--max-samples=$(QUINT_SAMPLES) --max-steps=$(QUINT_STEPS) --verbosity=1
+
+formal-check:
+	@echo "--> Typechecking $(QUINT_SPEC)"
+	@$(QUINT) typecheck $(QUINT_SPEC)
+	@echo "--> Checking x/poa invariants (deployed configuration)"
+	@$(QUINT_RUN) --main=deployed --invariant=invariants $(QUINT_SPEC)
+	@echo "--> Checking the invariants are not vacuous (witnesses must be violated)"
+	@for w in witnessNoSelfRemove witnessNeverFull; do \
+		if $(QUINT_RUN) --main=deployed --invariant=$$w $(QUINT_SPEC) > /dev/null 2>&1; then \
+			echo "witness $$w was never reached"; exit 1; \
+		fi; \
+	done
+	@echo "--> Checking the what-if model finds the expected counterexample"
+	@if $(QUINT_RUN) --main=stakingReachable --invariant=onlySelfDelegation $(QUINT_SPEC) > /dev/null 2>&1; then \
+		echo "stakingReachable: expected onlySelfDelegation to be violated"; exit 1; \
+	fi
+	@echo "--> All formal checks passed"
+
+# Print the counterexample trace of the what-if model.
+formal-what-if:
+	@$(QUINT) run --backend=typescript --seed=$(QUINT_SEED) --max-samples=$(QUINT_SAMPLES) \
+		--max-steps=$(QUINT_STEPS) --main=stakingReachable --invariant=onlySelfDelegation $(QUINT_SPEC) || true
+
+# Exhaustive bounded model checking with Apalache (needs Java 17+; Quint
+# downloads Apalache on first use).
+formal-verify:
+	@$(QUINT) verify --main=deployed --invariant=invariants --max-steps=$(QUINT_STEPS) $(QUINT_SPEC)
 
 # Fixed so a simulation failure is reproducible. The SDK defaults -GenesisTime to the current time,
 # so the seed alone does not reproduce a run. Seed 1 keeps a validator set for all blocks
